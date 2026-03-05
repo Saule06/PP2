@@ -1,0 +1,8 @@
+{
+    "instructurs":[
+        {"name": "Damir", "course": "4"},
+        {"name": "Dastan", "course": "3"},
+        {"name": "Aibek", "course": "1"},
+        {"name": "Saule", "course": "2"}
+    ]
+}

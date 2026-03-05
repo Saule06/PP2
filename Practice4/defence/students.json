@@ -1,0 +1,12 @@
+{
+    "Students":[
+        {"name": "Aigul", "course": "4"},
+        {"name": "Josh", "course": "3"},
+        {"name": "Ulpan", "course": "1"},
+        {"name": "Kate", "course": "2"},
+        {"name": "Lina", "course": "2"},
+        {"name": "Aknur", "course": "3"},
+        {"name": "Saya", "course": "1"},
+        {"name": "Zhan", "course": "2"}
+    ]
+}
