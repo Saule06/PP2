@@ -1,227 +1,129 @@
+
+
 import csv
-from connect import get_connection
+import psycopg2
+from connect import create_connection
 
 
-def create_table():
-    conn = get_connection()
+def insert_contact(first_name, last_name, phone_number):
+    conn = create_connection()
     cur = conn.cursor()
-
+    
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS phonebook (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            phone VARCHAR(20) NOT NULL UNIQUE
-        );
-    """)
+        INSERT INTO contacts (first_name, last_name, phone_number) 
+        VALUES (%s, %s, %s)
+    """, (first_name, last_name, phone_number))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def insert_from_csv(csv_file):
+    conn = create_connection()
+    cur = conn.cursor()
+    
+    with open(csv_file, mode='r') as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            first_name, last_name, phone_number = row
+            cur.execute("""
+                INSERT INTO contacts (first_name, last_name, phone_number)
+                VALUES (%s, %s, %s)
+            """, (first_name, last_name, phone_number))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def update_contact(phone_number, new_first_name=None, new_phone_number=None):
+    conn = create_connection()
+    cur = conn.cursor()
+
+    if new_first_name:
+        cur.execute("""
+            UPDATE contacts
+            SET first_name = %s
+            WHERE phone_number = %s
+        """, (new_first_name, phone_number))
+
+    if new_phone_number:
+        cur.execute("""
+            UPDATE contacts
+            SET phone_number = %s
+            WHERE phone_number = %s
+        """, (new_phone_number, phone_number))
 
     conn.commit()
     cur.close()
     conn.close()
-    print("Table 'phonebook' is ready.")
 
 
-def insert_from_csv(filename):
-    conn = get_connection()
+def query_contacts(filter_type, filter_value):
+    conn = create_connection()
     cur = conn.cursor()
 
-    with open(filename, "r", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
-
-        for row in reader:
-            name = row["name"]
-            phone = row["phone"]
-
-            try:
-                cur.execute("""
-                    INSERT INTO phonebook (name, phone)
-                    VALUES (%s, %s)
-                    ON CONFLICT (phone) DO NOTHING;
-                """, (name, phone))
-            except Exception as e:
-                print(f"Error inserting {name}: {e}")
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    print("Contacts inserted from CSV.")
-
-
-def insert_from_console():
-    name = input("Enter name: ")
-    phone = input("Enter phone: ")
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    try:
+    if filter_type == 'name':
         cur.execute("""
-            INSERT INTO phonebook (name, phone)
-            VALUES (%s, %s);
-        """, (name, phone))
-        conn.commit()
-        print("Contact added successfully.")
-    except Exception as e:
-        print("Error:", e)
-        conn.rollback()
-
-    cur.close()
-    conn.close()
-
-
-def update_contact():
-    search_value = input("Enter current name or phone of contact: ")
-    new_name = input("Enter new name (leave empty if not changing): ")
-    new_phone = input("Enter new phone (leave empty if not changing): ")
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    try:
-        if new_name and new_phone:
-            cur.execute("""
-                UPDATE phonebook
-                SET name = %s, phone = %s
-                WHERE name = %s OR phone = %s;
-            """, (new_name, new_phone, search_value, search_value))
-
-        elif new_name:
-            cur.execute("""
-                UPDATE phonebook
-                SET name = %s
-                WHERE name = %s OR phone = %s;
-            """, (new_name, search_value, search_value))
-
-        elif new_phone:
-            cur.execute("""
-                UPDATE phonebook
-                SET phone = %s
-                WHERE name = %s OR phone = %s;
-            """, (new_phone, search_value, search_value))
-
-        else:
-            print("Nothing to update.")
-            cur.close()
-            conn.close()
-            return
-
-        conn.commit()
-        print("Contact updated successfully.")
-
-    except Exception as e:
-        print("Error:", e)
-        conn.rollback()
-
-    cur.close()
-    conn.close()
-
-
-def query_contacts():
-    print("\nSearch options:")
-    print("1 - Show all contacts")
-    print("2 - Search by name")
-    print("3 - Search by phone prefix")
-
-    choice = input("Choose option: ")
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    if choice == "1":
-        cur.execute("SELECT * FROM phonebook ORDER BY id;")
-
-    elif choice == "2":
-        name = input("Enter name to search: ")
+            SELECT * FROM contacts WHERE first_name LIKE %s OR last_name LIKE %s
+        """, (f'%{filter_value}%', f'%{filter_value}%'))
+    elif filter_type == 'phone':
         cur.execute("""
-            SELECT * FROM phonebook
-            WHERE name ILIKE %s
-            ORDER BY id;
-        """, (f"%{name}%",))
-
-    elif choice == "3":
-        prefix = input("Enter phone prefix: ")
-        cur.execute("""
-            SELECT * FROM phonebook
-            WHERE phone LIKE %s
-            ORDER BY id;
-        """, (f"{prefix}%",))
-
-    else:
-        print("Invalid option.")
-        cur.close()
-        conn.close()
-        return
-
+            SELECT * FROM contacts WHERE phone_number LIKE %s
+        """, (f'{filter_value}%',))
+    
     rows = cur.fetchall()
-
-    if rows:
-        print("\nContacts:")
-        for row in rows:
-            print(row)
-    else:
-        print("No contacts found.")
-
+    for row in rows:
+        print(row)
+    
     cur.close()
     conn.close()
 
 
-def delete_contact():
-    value = input("Enter username or phone to delete: ")
-
-    conn = get_connection()
+def delete_contact(phone_number):
+    conn = create_connection()
     cur = conn.cursor()
-
-    try:
-        cur.execute("""
-            DELETE FROM phonebook
-            WHERE name = %s OR phone = %s;
-        """, (value, value))
-
-        conn.commit()
-
-        if cur.rowcount > 0:
-            print("Contact deleted successfully.")
-        else:
-            print("No such contact found.")
-
-    except Exception as e:
-        print("Error:", e)
-        conn.rollback()
-
+    
+    cur.execute("""
+        DELETE FROM contacts WHERE phone_number = %s
+    """, (phone_number,))
+    
+    conn.commit()
     cur.close()
     conn.close()
 
 
-def menu():
+def main():
+    # Insert contacts entered from the console
     while True:
-        print("\n--- PHONEBOOK MENU ---")
-        print("1. Create table")
-        print("2. Insert contacts from CSV")
-        print("3. Insert contact from console")
-        print("4. Update contact")
-        print("5. Query contacts")
-        print("6. Delete contact")
-        print("7. Exit")
+        first_name = input("Enter first name: ")
+        last_name = input("Enter last name: ")
+        phone_number = input("Enter phone number: ")
+        insert_contact(first_name, last_name, phone_number)
 
-        choice = input("Enter your choice: ")
-
-        if choice == "1":
-            create_table()
-        elif choice == "2":
-            insert_from_csv("contacts.csv")
-        elif choice == "3":
-            insert_from_console()
-        elif choice == "4":
-            update_contact()
-        elif choice == "5":
-            query_contacts()
-        elif choice == "6":
-            delete_contact()
-        elif choice == "7":
-            print("Goodbye!")
+        more = input("Do you want to add another contact? (y/n): ")
+        if more.lower() != 'y':
             break
-        else:
-            print("Invalid choice. Try again.")
+    
+    # Insert from CSV
+    csv_file = input("Enter CSV file name to import data: ")
+    insert_from_csv(csv_file)
 
+    # Update contact details
+    phone_number = input("Enter phone number to update: ")
+    new_first_name = input("Enter new first name (leave blank to keep unchanged): ")
+    new_phone_number = input("Enter new phone number (leave blank to keep unchanged): ")
+    update_contact(phone_number, new_first_name, new_phone_number)
+
+    # Query contacts
+    filter_type = input("Filter by (name/phone): ")
+    filter_value = input("Enter filter value: ")
+    query_contacts(filter_type, filter_value)
+
+    # Delete contact
+    phone_number = input("Enter phone number to delete: ")
+    delete_contact(phone_number)
 
 if __name__ == "__main__":
-    menu()
+    main()
