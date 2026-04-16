@@ -1,24 +1,45 @@
--- Function to search records matching a pattern
-CREATE OR REPLACE FUNCTION search_records(pattern TEXT)
-RETURNS TABLE(id INT, first_name VARCHAR, last_name VARCHAR, phone_number VARCHAR) AS $$
+
+-- functions.sql
+
+-- Если таблицы еще нет, можно создать так:
+CREATE TABLE IF NOT EXISTS phonebook (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL UNIQUE
+);
+
+-- 1) Function: search records by pattern
+-- Ищет совпадение в имени или телефоне
+CREATE OR REPLACE FUNCTION search_phonebook(pattern_text TEXT)
+RETURNS TABLE (
+    id INTEGER,
+    first_name VARCHAR,
+    phone VARCHAR
+)
+AS $$
 BEGIN
     RETURN QUERY
-    SELECT id, first_name, last_name, phone_number
-    FROM contacts
-    WHERE first_name ILIKE '%' || pattern || '%'
-       OR last_name ILIKE '%' || pattern || '%'
-       OR phone_number ILIKE '%' || pattern || '%';
+    SELECT p.id, p.first_name, p.phone
+    FROM phonebook p
+    WHERE p.first_name ILIKE '%' || pattern_text || '%'
+       OR p.phone ILIKE '%' || pattern_text || '%';
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to validate phone number (basic validation)
-CREATE OR REPLACE FUNCTION validate_phone(phone_number VARCHAR)
-RETURNS BOOLEAN AS $$
+
+-- 2) Function: get data with pagination
+CREATE OR REPLACE FUNCTION get_phonebook_paginated(p_limit INTEGER, p_offset INTEGER)
+RETURNS TABLE (
+    id INTEGER,
+    first_name VARCHAR,
+    phone VARCHAR
+)
+AS $$
 BEGIN
-    IF LENGTH(phone_number) = 10 AND phone_number ~ '^\d+$' THEN
-        RETURN TRUE;
-    ELSE
-        RETURN FALSE;
-    END IF;
+    RETURN QUERY
+    SELECT pb.id, pb.first_name, pb.phone
+    FROM phonebook pb
+    ORDER BY pb.id
+    LIMIT p_limit OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql;

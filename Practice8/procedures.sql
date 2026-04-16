@@ -1,42 +1,67 @@
--- Procedure to insert or update a user
-CREATE OR REPLACE PROCEDURE insert_or_update_user(first_name TEXT, last_name TEXT, phone_number TEXT)
+
+-- procedures.sql
+
+-- 1) Procedure: insert new user or update phone if user already exists
+CREATE OR REPLACE PROCEDURE insert_or_update_user(p_name TEXT, p_phone TEXT)
 AS $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM contacts WHERE first_name = first_name AND last_name = last_name) THEN
-        UPDATE contacts SET phone_number = phone_number WHERE first_name = first_name AND last_name = last_name;
+    IF EXISTS (SELECT 1 FROM phonebook WHERE first_name = p_name) THEN
+        UPDATE phonebook
+        SET phone = p_phone
+        WHERE first_name = p_name;
     ELSE
-        INSERT INTO contacts (first_name, last_name, phone_number) VALUES (first_name, last_name, phone_number);
+        INSERT INTO phonebook(first_name, phone)
+        VALUES (p_name, p_phone);
     END IF;
 END;
 $$ LANGUAGE plpgsql;
 
--- Procedure to insert multiple users with phone validation
-CREATE OR REPLACE PROCEDURE insert_many_users(users TEXT[])
+
+-- 2) Procedure: insert many users with validation
+-- Проверка телефона: только цифры, длина от 10 до 15
+-- Некорректные данные выводим через NOTICE
+CREATE OR REPLACE PROCEDURE insert_many_users(
+    p_names TEXT[],
+    p_phones TEXT[]
+)
 AS $$
 DECLARE
-    user_record TEXT[];
-    first_name TEXT;
-    last_name TEXT;
-    phone_number TEXT;
+    i INTEGER;
+    current_name TEXT;
+    current_phone TEXT;
 BEGIN
-    FOREACH user_record IN ARRAY users LOOP
-        first_name := user_record[1];
-        last_name := user_record[2];
-        phone_number := user_record[3];
+    IF array_length(p_names, 1) IS DISTINCT FROM array_length(p_phones, 1) THEN
+        RAISE EXCEPTION 'Names and phones arrays must have the same length';
+    END IF;
 
-        IF validate_phone(phone_number) THEN
-            CALL insert_or_update_user(first_name, last_name, phone_number);
+    FOR i IN 1..array_length(p_names, 1) LOOP
+        current_name := p_names[i];
+        current_phone := p_phones[i];
+
+        -- validate phone
+        IF current_phone ~ '^[0-9]{10,15}$' THEN
+            IF EXISTS (SELECT 1 FROM phonebook WHERE first_name = current_name) THEN
+                UPDATE phonebook
+                SET phone = current_phone
+                WHERE first_name = current_name;
+            ELSE
+                INSERT INTO phonebook(first_name, phone)
+                VALUES (current_name, current_phone);
+            END IF;
         ELSE
-            RAISE NOTICE 'Invalid phone number for user % %: %', first_name, last_name, phone_number;
+            RAISE NOTICE 'Incorrect data: name = %, phone = %', current_name, current_phone;
         END IF;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
--- Procedure to delete a user by username or phone number
-CREATE OR REPLACE PROCEDURE delete_user(identifier TEXT)
+
+-- 3) Procedure: delete by username or phone
+CREATE OR REPLACE PROCEDURE delete_user(p_value TEXT)
 AS $$
 BEGIN
-    DELETE FROM contacts WHERE first_name = identifier OR phone_number = identifier;
+    DELETE FROM phonebook
+    WHERE first_name = p_value
+       OR phone = p_value;
 END;
 $$ LANGUAGE plpgsql;

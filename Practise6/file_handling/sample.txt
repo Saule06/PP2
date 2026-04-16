@@ -1,4 +1,0 @@
-Line 1 : HEllo Python
-Line 2 : Practical Exercise 6
-Line 3 : appended new writings to  the same file 
- 
