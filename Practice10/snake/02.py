@@ -16,6 +16,10 @@ def draw_grid():
         for j in range(WIDTH // CELL):
             pygame.draw.rect(screen, colorGRAY, (i * CELL, j * CELL, CELL, CELL), 1)
 
+def draw_score_level():
+    text = font.render(f"Score: {score}   Level: {level}", True, colorWHITE) # type: ignore
+    screen.blit(text, (10, 10))
+
 def draw_grid_chess():
     colors = [colorWHITE, colorGRAY]
 
@@ -65,12 +69,23 @@ class Snake:
         for segment in self.body[1:]:
             pygame.draw.rect(screen, colorYELLOW, (segment.x * CELL, segment.y * CELL, CELL, CELL))
 
+    
+    
     def check_collision(self, food):
+        global score, level, FPS
+
         head = self.body[0]
+
         if head.x == food.pos.x and head.y == food.pos.y:
-            print("Got food!")
+            score += 1
+
             self.body.append(Point(head.x, head.y))
             food.generate_random_pos()
+
+        # Every 3 foods increase level and speed
+            if score % 3 == 0:
+                level += 1
+                FPS += 2
 
 class Food:
     def __init__(self):
@@ -85,6 +100,9 @@ class Food:
 
 
 FPS = 5
+score = 0
+level = 1
+
 clock = pygame.time.Clock()
 
 food = Food()
@@ -118,6 +136,7 @@ while running:
 
     snake.draw()
     food.draw()
+    draw_score_level()
 
     pygame.display.flip()
     clock.tick(FPS)

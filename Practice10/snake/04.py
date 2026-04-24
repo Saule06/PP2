@@ -15,6 +15,7 @@ CELL = 30
 font = pygame.font.SysFont("Arial", 30)
 
 score = 0
+level = 1
 
 # Загрузка картинки Game Over
 game_over_image = pygame.image.load("gameover.png")
@@ -35,9 +36,10 @@ def draw_grid():
                 1
             )
 
+
 def draw_score():
     text = font.render(
-        f"Score: {score}",
+        f"Score: {score}   Level: {level}",
         True,
         colorWHITE
     )
@@ -218,25 +220,23 @@ class Snake:
                 )
             )
 
-    def check_food_collision(
-        self,
-        food
-    ):
-
-        global score
+    def check_food_collision(self, food):
+        global score, level, FPS
 
         head = self.body[0]
 
-        if head.x == food.pos.x and \
-           head.y == food.pos.y:
+        if head.x == food.pos.x and head.y == food.pos.y:
 
             score += 1
 
-            self.body.append(
-                Point(head.x, head.y)
-            )
+            self.body.append(Point(head.x, head.y))
 
             food.generate_random_pos()
+
+    # каждые 3 еды → новый уровень
+            if score % 3 == 0:
+                level += 1
+                FPS += 2   # ускорение
 
 # ---------------- FOOD ----------------
 
@@ -333,6 +333,7 @@ while running:
     snake.draw()
     food.draw()
     obstacles.draw()
+    
 
     draw_score()
 

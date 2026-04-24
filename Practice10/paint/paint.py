@@ -192,6 +192,15 @@ while running:
         if event.type == pygame.QUIT:
 
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_r:
+                mode = "rect"
+            elif event.key == pygame.K_c:
+                mode = "circle"
+            elif event.key == pygame.K_p:
+                mode = "pen"
+            elif event.key == pygame.K_e:
+                mode = "eraser"
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
 
